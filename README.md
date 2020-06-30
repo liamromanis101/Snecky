@@ -10,7 +10,7 @@ Currently supported protocols:
 * SNMP versions 1 and 2c. SNMPv3 support not completed. 
 * STP
 
-Snecky has been converted to Python 3 and testing using Phython version 3.8.3. 
+snecky-0.9.2a.py has been converted to Python 3 and tested using Phython version 3.8.3. 
 
 TODO:
  shit loads
