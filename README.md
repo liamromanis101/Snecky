@@ -12,14 +12,24 @@ Currently supported protocols:
 
 snecky-0.9.2a.py has been converted to Python 3 and tested using Python version 3.8.3. 
 
+
 TODO:
- shit loads
+
+ shit loads!
  
- Installation:
+ add more protocols
+ 
+ develop issue text
+ 
+ develop library to support creation of '.nessus' reports.
+ 
+ 
+sudo pip3 install -r requirements.txt
  
  git clone https://github.com/liamromanis101/Snecky
  
  sudo pip3 install -r requirements.txt
+ 
  
  Usage:
  
