@@ -15,24 +15,22 @@ snecky-0.9.2a.py has been converted to Python 3 and tested using Python version 
 
 TODO:
 
- shit loads!
+ * shit loads!
  
- add more protocols
+ * add more protocols
  
- develop issue text
+ * develop issue text
  
- develop library to support creation of '.nessus' reports.
+ * develop library to support creation of '.nessus' reports.
  
  
 Installation:
 
+git clone https://github.com/liamromanis101/Snecky
+ 
 sudo pip3 install -r requirements.txt
  
- git clone https://github.com/liamromanis101/Snecky
  
- sudo pip3 install -r requirements.txt
+Usage:
  
- 
- Usage:
- 
- sudo python3 snecky.py
+sudo python3 snecky.py
