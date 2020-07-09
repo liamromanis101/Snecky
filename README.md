@@ -24,6 +24,8 @@ TODO:
  develop library to support creation of '.nessus' reports.
  
  
+Installation:
+
 sudo pip3 install -r requirements.txt
  
  git clone https://github.com/liamromanis101/Snecky
