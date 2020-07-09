@@ -10,11 +10,14 @@ Currently supported protocols:
 * SNMP versions 1 and 2c. SNMPv3 support not completed. 
 * STP
 
-snecky-0.9.2a.py has been converted to Python 3 and tested using Phython version 3.8.3. 
+snecky-0.9.2a.py has been converted to Python 3 and tested using Python version 3.8.3. 
 
 TODO:
  shit loads
  
+ Installation:
+ git clone https://github.com/liamromanis101/Snecky
+ sudo pip3 install -r requirements.txt
  
  Usage:
  
