@@ -16,7 +16,9 @@ TODO:
  shit loads
  
  Installation:
+ 
  git clone https://github.com/liamromanis101/Snecky
+ 
  sudo pip3 install -r requirements.txt
  
  Usage:
