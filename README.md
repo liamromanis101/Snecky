@@ -8,7 +8,7 @@ Currently supported protocols:
 * HSRP
 * CDP
 * SNMP versions 1 and 2c. SNMPv3 support not completed. 
-* STP
+
 
 snecky-0.9.2a.py has been converted to Python 3 and tested using Python version 3.8.3. 
 
@@ -22,6 +22,8 @@ TODO:
  * develop issue text
  
  * develop library to support creation of '.nessus' reports.
+ 
+ * STP support in development
  
  
 Installation:
