@@ -13,7 +13,9 @@ The change this line to
 
                 pkt=sniff(count=c,iface=intf,prn=print_pkt2)
 
-Then when you run the tool is will print out scapy packets which can be used to develop support for additional protocols and new versions of protocols already supported. Enter the packet text into a  
+Then when you run the tool is will print out scapy packets which can be used to develop support for additional protocols and new versions of protocols already supported. 
+
+You can then create a feature request by selecting 'issues' from the upper menu, the 'New Issue', 'Feature Request' and put the packet data into the feature request text. I will get on it as soon as possible. 
 
 Thanks for your support
 
