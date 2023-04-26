@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+#version 0.9.3a
+#Author: Liam Romanis
 
 from os import popen
 from scapy.all import *
@@ -8,6 +10,7 @@ import time
 from prettytable import PrettyTable, MSWORD_FRIENDLY
 import string
 from markupsafe import Markup, escape
+from pyfiglet import Figlet
 
 
 
@@ -18,6 +21,7 @@ load_contrib('hsrp')
 load_contrib('llc')
 load_contrib('snmp')
 load_contrib('cdp')
+
 
 name = ''
 f = ''
@@ -56,6 +60,15 @@ snmpverlist=['']
 cdp1src=['']
 cdp2src=['']
 
+#802.1q lists
+vlantagsrc=['']
+
+#DTP list
+dtpsrc=['']
+
+#VTP list
+vtpsrc=['']
+
 hsrp = PrettyTable(['version', 'priority', 'authentication', 'virtual ip'])
 vrrp = PrettyTable(['version', 'priority', 'auth type', 'authentication', 'address list'])
 ospf = PrettyTable(['version', 'auth type', 'authentication', 'src address'])
@@ -63,7 +76,9 @@ stp = PrettyTable([])
 snmp = PrettyTable(['source','destination','version','community'])
 cdp1 = PrettyTable(['devicename','softwareversion','platform','ipaddress', 'capabilities', 'gateway'])
 cdp2 = PrettyTable(['devicename','softwareversion','platform','ipaddress', 'capabilities'])
-
+vlantag = PrettyTable(['vlan_id','vlan_priority', 'ether_type', 'payload'])
+dtp = PrettyTable(['dp_version', 'status', 'tlv_mode', 'vlan', 'auth', 'auth_type]'])
+vtp = PrettyTable(['vtp_version', 'domain', 'operation', 'vlan', 'auth', 'auth_type'])
 
 vrrp.set_style(MSWORD_FRIENDLY)
 hsrp.set_style(MSWORD_FRIENDLY)
@@ -88,6 +103,41 @@ def print_pkt2(pkt):
 def print_pkt(pkt):
 	for p in pkt:
 		a = p.show(dump=True)
+		
+		if pkt.haslayer(VTP):
+			vtp_layer = pkt.getlayer(VTP)
+			version = vtp_layer.version
+			domain = vtp_layer.domain
+			vtpsrc.append(domain)
+			operation = vtp_layer.code
+			vlan = vtp_layer.vlan_id
+			auth = vtp_layer.auth
+			auth_type = vtp_layer.auth_type
+			vtp.add_row([vtp_version, domain, operation, vlan, auth, auth_type])
+		
+		if p.haslayer(Ether):
+			ether_packet = p[Ether]
+			if ether_packet.type == 0x2004:
+				if p.haslayer(DTP):
+					dtp_layer = pkt.getlayer(DTP)
+					version = dtp_layer.version
+					status = dtp_layer.status
+					dtpsrc.append(status)
+					tlv_mode = dtp_layer.tlv_mode
+					vlan = dtp_layer.vlan
+					auth = dtp_layer.auth
+					auth_type = dtp_layer.auth_type
+					dtp.add_row([dtp_version, status, tlv_mode, vlan, auth, auth_type])
+
+		if p.haslayer(Dot1Q):
+        		vlan_packet = packet[Dot1Q]
+        		# Extract the VLAN fields
+        		vlan_id = vlan_packet.vlan
+        		vlantagsrc.append(vlan_id)
+        		vlan_priority = vlan_packet.prio
+        		ether_type = vlan_packet.type
+        		payload = vlan_packet.payload
+        		vlantag.add_row([vlan_id, vlan_priority, ether_type, payload])
 
 		if (p.haslayer("Cisco Discovery Protocol version 1")):
 			print("CDPv1 Found")
@@ -201,6 +251,10 @@ def print_pkt(pkt):
 
 if __name__ == '__main__':
 
+
+	custom_fig = Figlet(font='graffiti')
+	print(custom_fig.renderText('Snecky'))
+	print("A passive network protocol security tool\n")
 	uid=os.getuid()
 	print(uid)
 	if uid==0:
@@ -208,36 +262,6 @@ if __name__ == '__main__':
 	else:
 		print("your are not root, this script requires root privileges")
 		sys.exit(0)
-
-	print("Enter the name you would like for the report")
-	name = str(input("Enter Report Name: "))
-	repname = name + ".nessus"
-	f = open(repname, "a+")
-	f.write('<?xml version="1.0" ?>\n')
-	f.write('<NessusClientData_v2>\n')
-	f.write('<Policy><policyName>MyPolicy</policyName>\n')
-	f.write('</Policy>\n')
-	f.write('<Preferences>\n')
-	f.write('<preference><name>TARGET</name>\n')
-	f.write('<value>Change Me</value>\n')
-	f.write('</preference>\n')
-	f.write('</Preferences>\n')
-	report_name = '<Report name="'
-	report_name = report_name + repname 
-	report_name = report_name + '" xmlns:cm="http://www.nessus.org/cm">\n'
-	f.write(report_name)
-	f.write('\n')
-
-
-	print("Enter the name of the Job, VLAN or Environment you are assessing.")
-	netname = input("Enter a Name: ")
-	netname1 = '<ReportHost name="'
-	netname1 = netname1 + netname
-	netname1 = netname1 + '">'
-	f.write(netname1)
-	f.write('\n')
-	f.write('<HostProperties>\n')
-	f.write('</HostProperties>\n')
 
 	addresses = interfaces()
 	print("Select which Interface you would like to sniff on:")
@@ -264,228 +288,12 @@ if __name__ == '__main__':
 		print("You really are a muppet!")
 	else:
 		#print c
-		pkt=sniff(count=c,iface=intf,prn=print_pkt2)
+		pkt=sniff(count=c,iface=intf,prn=print_pkt)
 
 
 	#for vrrpline in range(len(vrrp)):
 	#	print vrrp[vrrpline],
 
-	if len(listhsrppri) > 1:
-		if "255" in listhsrppri:
-			f.write('<ReportItem port="1985" svc_name="hsrp" protocol="udp" severity="2" pluginID="99999" pluginName="HSRP Weaknesses" pluginFamily="Misc.">\n')
-			f.write('<cvss3_base_score>5.8</cvss3_base_score>\n')
-			f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-			f.write('<cvss_base_score>5.5</cvss_base_score>\n')
-			f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:S/C:N/I:N/A:C</cvss_vector>\n')
-			f.write('<description>HSRP (Hot Standy Router Protocol) Packets were captured. HSRP is used to provide a fault tolerant gateway.\n')
-			f.write('The security of this protocol is provided by the selection of Priority (0 - 255) and the authentication used.\n')
-			f.write('In this case a master device with a priority of 255 was found which dramatically reduces the risk of MitM (Man in the Middle) attacks. However, the risk of denial of service is still a risk\n')
-			if "NONE" in listhsrpauth:
-				f.write('Some packets were found with no authentication configured which may increase the risk of denial of service attacks being successful.\n')
-				f.write('</description>\n')
-				f.write('<fname>hsrp.nasl</fname>\n')
-				f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-				f.write('<plugin_name>HSRP Passive Analysis</plugin_name>\n')
-				f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-				f.write('<plugin_type>Passive</plugin_type>\n')
-				f.write('<risk_factor>Medium</risk_factor>\n')
-				f.write('<script_version>0.1</script_version>\n')
-				f.write('<see_also>https://isc.sans.edu/formums/diary/Network+Reliability+Part+2+HSRP+Attacks+and+Defenses/10120/</see_also>\n')
-				f.write('<solution>InteliSecure recommends that MD5 Authentication is configured.</solution>\n')
-				hsrptab = hsrp.get_string()
-				f.write(hsrptab)
-				f.write('</plugin_output>\n')
-				f.write('</ReportItem>')
-		else:
-			f.write('<ReportItem port="1985" svc_name="hsrp" protocol="udp" severity="3" pluginID="99999" pluginName="HSRP Weaknesses" pluginFamily="Misc.">\n')
-			f.write('<cvss3_base_score>5.8</cvss3_base_score>\n')
-			f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-			f.write('<cvss_base_score>7.7</cvss_base_score>\n')
-			f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:S/C:C/I:C/A:C</cvss_vector>\n')
-			f.write('<description>HSRP (Hot Standy Router Protocol) Packets were captured.  HSRP is used to provide a fault tolerant gateway.\n')
-			f.write('The security of this protocol is provided by the selection of Priority (0 - 255) and the authentication used.\n')
-			f.write('In this case a master device with a priority of 255 was not found which dramatically increases the risk of MitM (Man in the Middle) attacks and denial of service.\n')
-			if "NONE" in listhsrpauth:
-				f.write('Some packets were found with no authentication configured which may increase the risk of MitM and denial of service attacks being successful.\n')
-				f.write('</description>\n')
-				f.write('<fname>hsrp.nasl</fname>\n')
-				f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-				f.write('<plugin_name>HSRP Passive Analysis</plugin_name>\n')
-				f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-				f.write('<plugin_type>Passive</plugin_type>\n')
-				f.write('<risk_factor>High</risk_factor>\n')
-				f.write('<script_version>0.1</script_version>\n')
-				f.write('<see_also>https://isc.sans.edu/formums/diary/Network+Reliability+Part+2+HSRP+Attacks+and+Defenses/10120/</see_also>\n')
-				f.write('<solution>InteliSecure recommends that the Master device is configured with a priority of 255 and that MD5 Authentication is configured.</solution>\n')
-				f.write('<plugin_output>\n')
-				hsrptab = hsrp.get_string()
-				f.write(hsrptab)
-				f.write('</plugin_output>\n')
-				f.write('</ReportItem>\n')
-
-		print("\n\n")
-	if len(listvrrpatype) > 1:
-		if "255" in listvrrppri:
-			f.write('<ReportItem port="112" svc_name="vrrp" protocol="udp" severity="2" pluginID="99998" pluginName="VRRP Weaknesses" pluginFamily="Misc.">\n')
-			f.write('<cvss3_base_score>5.8</cvss3_base_score>\n')
-			f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-			f.write('<cvss_base_score>5.5</cvss_base_score>\n')
-			f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:S/C:N/I:N/A:C</cvss_vector>\n')
-			f.write('<description>VRRP (Virtual Router Router Protocol) Packets were captured. VRRP is used to provide a fault tolerant gateway.\n')
-			f.write('The security of this protocol is provided by the selection of Priority (0 - 255) and the authentication used.\n')
-			f.write('In this case a master device with a priority of 255 was found which dramatically reduces the risk of MitM (Man in the Middle) attacks. However, the risk of denial of servic')
-			if "0" in listvrrpatype:
-				f.write('VRRP packets were found which had no authenticaton configured. This is poor practice and could increase the risk of denial of service attacks.')
-			if "1" in listvrrpatype:
-				f.write('VRRP packets weee found which had plain text authentication configured. This type of authentication is vulnerable to snooping.')
-				f.write('Once a threat actor has the authentication text he could launch denial of service attacks. ')
-				f.write('</description>\n')
-				f.write('<fname>vrrp.nasl</fname>\n')
-				f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-				f.write('<plugin_name>VRRP Passive Analysis</plugin_name>\n')
-				f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-				f.write('<plugin_type>Passive</plugin_type>\n')
-				f.write('<risk_factor>Medium</risk_factor>\n')
-				f.write('<script_version>0.1</script_version>\n')
-				f.write('<see_also></see_also>\n')
-				f.write('<solution>InteliSecure recommends that MD5 Authentication is configured.</solution>\n')
-				f.write('<plugin_output>\n')
-				vrrptab = vrrp.get_string()
-				f.write(vrrptab)
-				f.write('</plugin_output>\n')
-				f.write('</ReportItem>\n')
-		else:
-			f.write('<ReportItem port="112" svc_name="vrrp" protocol="udp" severity="3" pluginID="99998" pluginName="VRRP Weaknesses" pluginFamily="Misc.">\n')
-			f.write('<cvss3_base_score>5.8</cvss3_base_score>\n')
-			f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-			f.write('<cvss_base_score>7.7</cvss_base_score>\n')
-			f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:S/C:C/I:C/A:C</cvss_vector>\n')
-			f.write('<description>VRRP (Virtual Router Router Protocol) Packets were captured. VRRP is used to provide a fault tolerant gateway.\n')
-			f.write('The security of this protocol is provided by the selection of Priority (0 - 255) and the authentication used.\n')
-			f.write('In this case a master device with a priority of 255 was not found which dramatically increases the risk of MitM (Man in the Middle) attacks and denial of service. ')
-			if "0" in listvrrpatype:
-				f.write('VRRP packets were found which had no authenticaton configured. This is poor practice and could increase the risk of denial of service attacks.')
-			if "1" in listvrrpatype:
-				f.write('VRRP packets weee found which had plain text authentication configured. This type of authentication is vulnerable to snooping.')
-				f.write('Once a threat actor has the authentication text he could launch denial of service attacks. ')
-				f.write('</description>\n')
-				f.write('<fname>vrrp.nasl</fname>\n')
-				f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-				f.write('<plugin_name>VRRP Passive Analysis</plugin_name>\n')
-				f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-				f.write('<plugin_type>Passive</plugin_type>\n')
-				f.write('<risk_factor>Medium</risk_factor>\n')
-				f.write('<script_version>0.1</script_version>\n')
-				f.write('<see_also></see_also>\n')
-				f.write('<solution>InteliSecure recommends that MD5 Authentication is configured and that the Master device is configured with a priority of 255.</solution>\n')
-				f.write('<plugin_output>\n')
-				vrrptab = vrrp.get_string()
-				f.write(vrrptab)
-				f.write('</plugin_output>\n')
-				f.write('</ReportItem>\n')
-
-if len(listospfver) > 1:
-	#print len(listospfver)
-	#print listospfautht
-	if 0 in listospfautht:
-		f.write('<ReportItem port="89" svc_name="ospf" protocol="udp" severity="3" pluginID="99997" pluginName="OSPF Weaknesses" pluginFamily="Misc.">\n')
-		f.write('<cvss3_base_score>7.7</cvss3_base_score>\n')
-		f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-		f.write('<cvss_base_score>9.0</cvss_base_score>\n')
-		f.write('<cvss_vector>CVSS2#(AV:N/AC:L/Au:N/C:P/I:P/A:C)</cvss_vector>\n')
-		f.write('<description>OSPF (Open Shortest Path First) Packets were captured. OSPF is used to distribute IP routing information throughout an Autonomous System (AS) in a network.\n')
-		f.write('The security of this protocol is provided by the authentication used.\n')
-		f.write('In this case an Athentication Type of Null was configured, meaning that no authentication is configured. This will increase the risk of successful remote attacks against OSPF as the Authentication Data does not need to be known.\n ')
-		f.write('Man in the Middle (MitM), Denial of Service and potentially, malicious route insertion could occur.\n')
-		f.write('</description>\n')
-		f.write('<fname>ospf.nasl</fname>\n')
-		f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-		f.write('<plugin_name>OSPF Passive Analysis</plugin_name>\n')
-		f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-		f.write('<plugin_type>Passive</plugin_type>\n')
-		f.write('<risk_factor>High</risk_factor>\n')
-		f.write('<script_version>0.1</script_version>\n')
-		f.write('<solution>InteliSecure recommends that MD5 Authentication is configured.</solution>\n')
-		f.write('<plugin_output>\n')
-		ospftab = ospf.get_string()
-		f.write(ospftab)
-		f.write('</plugin_output>\n')
-		f.write('</ReportItem>\n')
-		if 1 in listospfautht:
-			f.write('<ReportItem port="89" svc_name="ospf" protocol="udp" severity="3" pluginID="99997" pluginName="OSPF Weaknesses" pluginFamily="Misc.">\n')
-			f.write('<cvss3_base_score>7.3</cvss3_base_score>\n')
-			f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-			f.write('<cvss_base_score>7.0</cvss_base_score>\n')
-			f.write('<cvss_vector>CVSS2#AV:(AV:A/AC:L/Au:N/C:P/I:P/A:C)</cvss_vector>\n')
-			f.write('<description>OSPF (Open Shortest Path First) Packets were captured. OSPF is used to distribute IP routing information throughout an Autonomous System (AS) in a network.\n')
-			f.write('The security of this protocol is provided by the authentication used.\n')
-			f.write('In this case an Athentication Type of Simple was configured, meaning that Plain Text authentication is configured. This will increase the risk of successful attacks on the local LAN')
-			f.write('Man in the Middle (MitM), Denial of Service and potentially, malicious route insertion could occur.\n')
-			f.write('</description>\n')
-			f.write('<fname>ospf.nasl</fname>\n')
-			f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-			f.write('<plugin_name>OSPF Passive Analysis</plugin_name>\n')
-			f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-			f.write('<plugin_type>Passive</plugin_type>\n')
-			f.write('<risk_factor>High</risk_factor>\n')
-			f.write('<script_version>0.1</script_version>\n')
-			f.write('<solution>InteliSecure recommends that MD5 Authentication is configured.</solution>\n')
-			f.write('<plugin_output>\n')
-			ospftab = ospf.get_string()
-			f.write(ospftab)
-			f.write('</plugin_output>\n')
-			f.write('</ReportItem>\n')
-			if len(snmplist) > 1:
-				f.write('<ReportItem port="161" svc_name="snmp" protocol="udp" severity="2" pluginID="99996" pluginName="SNMP Weaknesses" pluginFamily="Misc.">\n')
-				f.write('<cvss3_base_score>5.0</cvss3_base_score>\n')
-				f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-				f.write('<cvss_base_score>8.0</cvss_base_score>\n')
-				f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:S/C:N/I:N/A:C</cvss_vector>\n')
-				f.write('<description>SNMP (Simple Network Management) Packets were captured. SNMP is used for device management and maintenance\n')
-				f.write('The security of this protocol is provided by the authentication used.\n')
-				f.write('SNMP packets are UDP datagrams which are therefore distributed across local LAN. SNMP version 1 and 2c packets are alsoclear text, which allows any threat actor on the LAN to capture the community strings and use them to glean information from device and potentially, modify device configuration.')
-				f.write('</description>\n')
-				f.write('<fname>snmp.nasl</fname>\n')
-				f.write('<plugin_modification_date>2019/11/14</plugin_modification_date>\n')
-				f.write('<plugin_name>SNMP Passive Analysis</plugin_name>\n')
-				f.write('<plugin_publication_date>2019/11/14</plugin_publication_date>\n')
-				f.write('<plugin_type>Passive</plugin_type>\n')
-				f.write('<risk_factor>High</risk_factor>\n')
-				f.write('<script_version>0.1</script_version>\n')
-				f.write('<solution>InteliSecure recommends that SNMP version 1 and 2c are disabled and that SNMP version 3 is used instead.</solution>\n')
-				f.write('<plugin_output>\n')
-				snmptab = snmp.get_string()
-				f.write(snmptab)
-				f.write('</plugin_output>\n')
-				f.write('</ReportItem>\n')
-
-	if (len(cdp1src) or len(cdp2src) >1):
-		f.write('<ReportItem port="none" svc_name="cdp" protocol="udp" severity="1" pluginID="99995" pluginName="CDP Information Disclosure" pluginFamily="Misc.">\n')
-		f.write('<cvss3_base_score>3.3</cvss3_base_score>\n')
-		f.write('<cvss3_vector>CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L</cvss3_vector>\n')
-		f.write('<cvss_base_score>8.0</cvss_base_score>\n')
-		f.write('<cvss_vector>CVSS2#AV:A/AC:L/Au:N/C:P/I:N/A:N</cvss_vector>\n')
-		f.write('<description>CDP (Cisco Discovery Protocol) Packets were captured. CDP is used share information about directly connected Cisco equipment with other connected devices.\n')
-		f.write('The CDP protocol is a proprietary Data Link layer protocol which broadcasts packets to all devices on the network. CDP packets include various information concerning the type of device, its capabilities and the Cisco IOS software version.')
-		f.write('This information could be used by threat actors to research vulnerabilities in Cisco devices. Furthermore, the use of CDP is useful in the execution of many network protocol attacks. ')
-		f.write('</description>\n')
-		f.write('<fname>cdp.nasl</fname>\n')
-		f.write('<plugin_modification_date>2019/11/25</plugin_modification_date>\n')
-		f.write('<plugin_name>CDP Passive Analysis</plugin_name>\n')
-		f.write('<plugin_publication_date>2019/11/25</plugin_publication_date>\n')
-		f.write('<plugin_type>Passive</plugin_type>\n')
-		f.write('<risk_factor>Low</risk_factor>\n')
-		f.write('<script_version>0.1</script_version>\n')
-		f.write('<solution>InteliSecure recommends that CDP is disabled where possible.</solution>\n')
-		f.write('<plugin_output>\n')
-		if len(cdp1src) > 1:
-			cdptab = cdp1.get_string()
-			f.write(cdptab)
-		if len(cdp2src) > 1:
-			cdp2tab = cdp2.get_string()
-			f.write(cdp2tab)
-			f.write('</plugin_output>\n')
-			f.write('</ReportItem>\n')
 
 	if len(listhsrppri) > 1:
 		print("\n\n--HSRP Results--")
@@ -508,10 +316,18 @@ if len(listospfver) > 1:
 	if len(cdp2src) > 1:
 		print("\n\n\--CDP v2 Results--")
 		print(cdp2)
+		
+	if len(vlantagsrc) > 1:
+		print("\n\n--801.1Q Results--")
+		print(vlantag)
+		
+	if len(dtpsrc) > 1:
+		print("\n\n--DTP Results--")
+		print(dtp)
+		
+	if len(vtpsrc) > 1:
+		print('--VTP Results--')
+		print(vtp)
 
 
-	f.write('</ReportHost>\n')
-	f.write("</Report>\n")
-	f.write("</NessusClientData_v2>\n")
-	f.close
  
