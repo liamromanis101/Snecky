@@ -1,5 +1,5 @@
 # Snecky
-A passive tool to simplify detection and reporting or network protocols with weak configurations and output into a Nessus like format for import to reporting tools. 
+A passive tool to simplify detection and reporting or network protocols with weak configurations and output stdout and to some standard output syles. Designed mostly for educational purposes for infrastructure testers to note weaknesses in network protocols where they are often overlooked. 
 
 Currently supported protocols:
 
