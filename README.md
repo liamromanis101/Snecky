@@ -7,7 +7,10 @@ Currently supported protocols:
 * VRRP
 * HSRP
 * CDP
-* SNMP versions 1 and 2c. SNMPv3 support not completed. 
+* SNMP versions 1, 2c and 3
+* VTP
+* DTP
+* 802.1q
 
 
 snecky.py has been converted to Python 3 and tested using Python version 3.8.3. However, not fully tested in a live environment. 
@@ -26,16 +29,14 @@ The following protocols have been added:
     VTP
 
 TODO:
-
- * shit loads!
  
- * add more protocols
+ * add more protocols 
+ 
+ * Coming soon STP, 802.1X, WEP, WPA, WPA2
  
  * develop issue text
- 
- * develop library to support creation of '.nessus' reports.
- 
- * STP support in development
+
+ * Nessus support has been removed. Support to be added for Dradis and a standardized XML report.  
  
  
 Installation:
