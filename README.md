@@ -27,6 +27,8 @@ The following protocols have been added:
     802.1q
     DTP
     VTP
+    
+    If you spot any issues please report them
 
 TODO:
  
